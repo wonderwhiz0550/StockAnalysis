@@ -1,0 +1,7 @@
+gradio
+yfinance
+requests
+numpy
+pandas
+scipy
+matplotlib
