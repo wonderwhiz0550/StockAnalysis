@@ -41,27 +41,27 @@ if st.button("🚀 Run Analysis"):
 
     # Technical Indicators
     if do_technical:
-        tech_df = calculate_technical_indicators(ticker)
-        if not tech_df.empty:
-            # Combined price chart with moving averages and Bollinger Bands
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
-            if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
-            fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
-                              xaxis_title="Date", yaxis_title="Price",
-                              hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
+    tech_df = calculate_technical_indicators(ticker)
+    if not tech_df.empty:
+        # Price and Moving Averages Plot
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
+        if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
+        fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
+                          xaxis_title="Date", yaxis_title="Price",
+                          hovermode="x unified")
+        st.plotly_chart(fig, use_container_width=True)
 
-            # Properly prepare RSI and MACD as Series
-            rsi_series = pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)
-            macd_series = pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)
+        # --- FIX RSI and MACD extraction ---
+        rsi_series = pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)
+        macd_series = pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)
 
-            st.line_chart(rsi_series.dropna())
-            st.line_chart(macd_series.dropna())
+        st.line_chart(rsi_series.dropna())
+        st.line_chart(macd_series.dropna())
 
     # Analyst Ratings
     if do_analyst:
