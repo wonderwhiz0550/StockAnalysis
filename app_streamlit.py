@@ -59,7 +59,8 @@ if st.button("🚀 Run Analysis"):
             # --- FIX RSI and MACD extraction ---
             rsi_series = tech_df['RSI'].squeeze()
             macd_series = tech_df['MACD'].squeeze()
-
+            st.write("Shape of RSI Series:", rsi_series.shape)
+            st.write("Type of RSI Series:", type(rsi_series))
             # --- ADD THESE LINES FOR DEBUGGING ---
             st.write("Shape of RSI Series:", rsi_series.shape)
             st.write("Type of RSI Series:", type(rsi_series))
