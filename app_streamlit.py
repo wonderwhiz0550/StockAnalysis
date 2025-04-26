@@ -57,8 +57,8 @@ if st.button("🚀 Run Analysis"):
             st.plotly_chart(fig, use_container_width=True)
 
             # --- FIX RSI and MACD extraction ---
-            rsi_series = <span style="background-color: #f0f0f0;">pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)</span>
-            macd_series = <span style="background-color: #f0f0f0;">pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)</span>
+            rsi_series = pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)
+            macd_series = pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)
 
             st.line_chart(rsi_series.dropna())
             st.line_chart(macd_series.dropna())
