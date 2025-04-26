@@ -180,26 +180,28 @@ def evaluate_stock(ticker, config):
 
 # -------------------New Code here
 def calculate_technical_indicators(ticker):
-    # Fetch 1 year of data (not future dates)
-    df = yf.download(ticker, period="1y", interval="1d")
+    try:
+        # Fetch 1 year of data
+        df = yf.download(ticker, period="1y", interval="1d")
+        if df.empty:
+            st.error(f"No data found for {ticker}")
+            return pd.DataFrame()
+        
+        # Ensure valid dates
+        df = df[df.index <= pd.Timestamp.now()]
+        
+        # Calculate indicators
+        close_prices = df['Close'].squeeze()
+        
+        # Simple SMA calculation (debugging)
+        df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()
+        df['SMA200'] = close_prices.rolling(200, min_periods=1).mean()
+        
+        return df.dropna()
     
-    if df.empty:
+    except Exception as e:
+        st.error(f"Error calculating indicators: {str(e)}")
         return pd.DataFrame()
-    
-    # Ensure dates are valid (no future dates)
-    df = df[df.index <= pd.Timestamp.now()]
-    
-    # Calculate indicators
-    close_prices = df['Close'].squeeze()
-    df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()
-    df['SMA200'] = close_prices.rolling(200, min_periods=1).mean()
-    
-    # Bollinger Bands
-    bb = ta.volatility.BollingerBands(close_prices)
-    df['Upper_BB'] = bb.bollinger_hband().to_numpy().flatten()
-    df['Lower_BB'] = bb.bollinger_lband().to_numpy().flatten()
-    
-    return df.dropna()
 
 def fetch_analyst_ratings(ticker):
     stock = yf.Ticker(ticker)
