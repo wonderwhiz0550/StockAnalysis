@@ -183,21 +183,19 @@ def calculate_technical_indicators(ticker):
     df = yf.download(ticker, period="6mo", interval="1d")
     if df.empty:
         return pd.DataFrame()
-    close_prices = df['Close'] # Ensure df['Close'] is used directly
+    close_prices = df['Close'].copy()  # Explicit Series extraction
 
-    # --- Debugging ---
-    print(f"Type of df['Close']: {type(df['Close'])}")
-    print(f"Shape of df['Close']: {df['Close'].shape}")
-    #print(f"Type of close_prices: {type(close_prices)}") # Removed this line
-    #print(f"Shape of close_prices: {close_prices.shape}") # Removed this line
-    print(f"First 5 values of close_prices:\n{close_prices.head()}")
-    # --- End Debugging ---
+    # --- Bollinger Bands Fix ---
+    bb = ta.volatility.BollingerBands(close_prices)
+    df['Upper_BB'] = bb.bollinger_hband().values.flatten()
+    df['Lower_BB'] = bb.bollinger_lband().values.flatten()
 
+    # Other indicators
     df['SMA50'] = close_prices.rolling(50).mean()
     df['SMA200'] = close_prices.rolling(200).mean()
-    df['Upper_BB'], df['Lower_BB'] = ta.volatility.BollingerBands(close_prices).bollinger_hband(), ta.volatility.BollingerBands(close_prices).bollinger_lband()
     df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi()
     df['MACD'] = ta.trend.MACD(close_prices).macd()
+    
     return df
 
 def fetch_analyst_ratings(ticker):
