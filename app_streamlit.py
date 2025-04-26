@@ -40,39 +40,66 @@ if st.button("🚀 Run Analysis"):
             st.image(plot_path, caption="Monte Carlo Simulation")
 
     # Technical Indicators
-    if do_technical:
-        tech_df = calculate_technical_indicators(ticker)
-        if not tech_df.empty:
-            # Price and Moving Averages Plot
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
-            if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
-            fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
-                              xaxis_title="Date", yaxis_title="Price",
-                              hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
-
-            # --- FIX RSI and MACD extraction ---
-            rsi_series = tech_df['RSI'].squeeze()
-            macd_series = tech_df['MACD'].squeeze()
-           # st.write("Shape of RSI Series:", rsi_series.shape)
-            #st.write("Type of RSI Series:", type(rsi_series))
-           # st.write("RSI Series Type:", type(tech_df['RSI']))
-            # --- ADD THESE LINES FOR DEBUGGING ---
-            #st.write("Shape of RSI Series:", rsi_series.shape)
-            #st.write("Type of RSI Series:", type(rsi_series))
-            #st.write("First 5 values of RSI Series:", rsi_series.head())
-            #st.write("Shape of MACD Series:", macd_series.shape)
-            #st.write("Type of MACD Series:", type(macd_series))
-            #st.write("First 5 values of MACD Series:", macd_series.head())
-            # --- END DEBUGGING LINES ---
-
-            st.line_chart(tech_df['RSI'].dropna())
-            st.line_chart(tech_df['MACD'].dropna())
+# Replace the existing technical indicators plotting code with:
+if do_technical:
+    tech_df = calculate_technical_indicators(ticker)
+    if not tech_df.empty:
+        # Price and Moving Averages Plot
+        fig = go.Figure()
+        
+        # Add traces with explicit names
+        fig.add_trace(go.Scatter(
+            x=tech_df.index, 
+            y=tech_df['Close'], 
+            mode='lines', 
+            name='Close Price',
+            line=dict(color='royalblue', width=2)
+        ))
+        fig.add_trace(go.Scatter(
+            x=tech_df.index, 
+            y=tech_df['SMA50'], 
+            mode='lines', 
+            name='SMA50 (50-Day Moving Average)',
+            line=dict(color='orange', width=1.5)
+        ))
+        fig.add_trace(go.Scatter(
+            x=tech_df.index, 
+            y=tech_df['SMA200'], 
+            mode='lines', 
+            name='SMA200 (200-Day Moving Average)',
+            line=dict(color='green', width=1.5)
+        ))
+        
+        # Bollinger Bands (if available)
+        if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
+            fig.add_trace(go.Scatter(
+                x=tech_df.index, 
+                y=tech_df['Upper_BB'], 
+                mode='lines', 
+                name='Upper Bollinger Band',
+                line=dict(color='gray', dash='dot', width=1)
+            ))
+            fig.add_trace(go.Scatter(
+                x=tech_df.index, 
+                y=tech_df['Lower_BB'], 
+                mode='lines', 
+                name='Lower Bollinger Band',
+                line=dict(color='gray', dash='dot', width=1),
+                fill='tonexty'  # Fills between Upper and Lower bands
+            ))
+        
+        # Update layout
+        fig.update_layout(
+            title=f"{ticker} Price with Technical Indicators",
+            xaxis_title="Date",
+            yaxis_title="Price (USD)",
+            hovermode="x unified",
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            height=600
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
 
     # Analyst Ratings
     if do_analyst:
