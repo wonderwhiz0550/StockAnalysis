@@ -61,7 +61,7 @@ if st.button("🚀 Run Analysis"):
             macd_series = tech_df['MACD'].squeeze()
            # st.write("Shape of RSI Series:", rsi_series.shape)
             #st.write("Type of RSI Series:", type(rsi_series))
-            st.write("RSI Series Type:", type(tech_df['RSI']))
+           # st.write("RSI Series Type:", type(tech_df['RSI']))
             # --- ADD THESE LINES FOR DEBUGGING ---
             #st.write("Shape of RSI Series:", rsi_series.shape)
             #st.write("Type of RSI Series:", type(rsi_series))
