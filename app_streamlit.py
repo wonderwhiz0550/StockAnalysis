@@ -57,8 +57,8 @@ if st.button("🚀 Run Analysis"):
             st.plotly_chart(fig, use_container_width=True)
 
             # --- FIX RSI and MACD extraction ---
-            rsi_series = tech_df['RSI']
-            macd_series = tech_df['MACD']
+            rsi_series = tech_df['RSI'].squeeze()
+            macd_series = tech_df['MACD'].squeeze()
 
             # --- ADD THESE LINES FOR DEBUGGING ---
             st.write("Shape of RSI Series:", rsi_series.shape)
