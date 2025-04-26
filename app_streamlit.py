@@ -61,6 +61,7 @@ if st.button("🚀 Run Analysis"):
             macd_series = tech_df['MACD'].squeeze()
             st.write("Shape of RSI Series:", rsi_series.shape)
             st.write("Type of RSI Series:", type(rsi_series))
+            st.write("RSI Series Type:", type(tech_df['RSI']))
             # --- ADD THESE LINES FOR DEBUGGING ---
             st.write("Shape of RSI Series:", rsi_series.shape)
             st.write("Type of RSI Series:", type(rsi_series))
@@ -70,8 +71,8 @@ if st.button("🚀 Run Analysis"):
             st.write("First 5 values of MACD Series:", macd_series.head())
             # --- END DEBUGGING LINES ---
 
-            st.line_chart(rsi_series.dropna())
-            st.line_chart(macd_series.dropna())
+            st.line_chart(tech_df['RSI'].dropna())
+            st.line_chart(tech_df['MACD'].dropna())
 
     # Analyst Ratings
     if do_analyst:
