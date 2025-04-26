@@ -180,27 +180,26 @@ def evaluate_stock(ticker, config):
 
 # -------------------New Code here
 def calculate_technical_indicators(ticker):
-    df = yf.download(ticker, period="6mo", interval="1d")
+    df = yf.download(ticker, period="1y", interval="1d")  # Use 1 year for better SMA visibility
     if df.empty:
         return pd.DataFrame()
     
-    # Explicitly convert to Series using squeeze()
     close_prices = df['Close'].squeeze()
     
     # Calculate indicators
-    df['SMA50'] = close_prices.rolling(50).mean()
-    df['SMA200'] = close_prices.rolling(200).mean()
+    df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()  # min_periods=1 to avoid NaNs
+    df['SMA200'] = close_prices.rolling(200, min_periods=1).mean()
     
-    # Fix Bollinger Bands (critical fix)
+    # Bollinger Bands
     bb = ta.volatility.BollingerBands(close_prices)
-    df['Upper_BB'] = bb.bollinger_hband().to_numpy().flatten()  # Force 1D array
+    df['Upper_BB'] = bb.bollinger_hband().to_numpy().flatten()
     df['Lower_BB'] = bb.bollinger_lband().to_numpy().flatten()
     
-    # Fix RSI and MACD
-    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi().to_numpy().flatten()
-    df['MACD'] = ta.trend.MACD(close_prices).macd().to_numpy().flatten()
+    # RSI and MACD
+    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi()
+    df['MACD'] = ta.trend.MACD(close_prices).macd()
     
-    return df
+    return df.dropna()  # Remove rows with missing values
 
 def fetch_analyst_ratings(ticker):
     stock = yf.Ticker(ticker)
