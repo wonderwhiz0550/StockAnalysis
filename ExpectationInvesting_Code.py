@@ -1,9 +1,8 @@
-import ta
+
 import yfinance as yf
 import requests
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 # Configuration Dictionary for Customization
@@ -90,8 +89,6 @@ def multi_stage_dcf(revenue, growth_rates, fcf_margin, discount_rate, terminal_g
     if config["terminal_method"] == "perpetual_growth":
         terminal_revenue = revenues[-1] * (1 + terminal_growth_rate)
         terminal_fcf = terminal_revenue * fcf_margin
-        if discount_rate - terminal_growth_rate <= 0:
-            raise ValueError("Discount rate must be greater than terminal growth rate.")
         terminal_value = terminal_fcf / (discount_rate - terminal_growth_rate)
     elif config["terminal_method"] == "exit_multiple":
         terminal_ebitda = revenues[-1] * fcf_margin
@@ -178,68 +175,55 @@ def evaluate_stock(ticker, config):
 
     return output, "Success", "valuation_plot.png"
 
-# -------------------New Code here
-def calculate_technical_indicators(ticker):
-    try:
-        # Fetch 1 year of data
-        df = yf.download(ticker, period="1y", interval="1d")
-        if df.empty:
-            st.error(f"No data found for {ticker}")
-            return pd.DataFrame()
-        
-        # Ensure valid dates
-        df = df[df.index <= pd.Timestamp.now()]
-        
-        # Calculate indicators
-        close_prices = df['Close'].squeeze()
-        
-        # Simple SMA calculation (debugging)
-        df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()
-        df['SMA200'] = close_prices.rolling(200, min_periods=1).mean()
-        
-        return df.dropna()
-    
-    except Exception as e:
-        st.error(f"Error calculating indicators: {str(e)}")
-        return pd.DataFrame()
+# New: Technical Analysis Functions
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
 
-def fetch_analyst_ratings(ticker):
-    stock = yf.Ticker(ticker)
-    try:
-        rec = stock.recommendations
-        latest = rec.tail(5)
-        return latest[['Firm', 'To Grade']]
-    except Exception:
-        return pd.DataFrame()
+def calculate_macd(series, fast=12, slow=26, signal=9):
+    ema_fast = series.ewm(span=fast, adjust=False).mean()
+    ema_slow = series.ewm(span=slow, adjust=False).mean()
+    macd = ema_fast - ema_slow
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    return macd, signal_line
 
-def fetch_news_sentiment(ticker):
-    headlines = [f"{ticker} reported strong earnings", f"{ticker} faces regulatory challenges"]
-    sentiments = ["Positive", "Negative"]
-    return list(zip(headlines, sentiments))
+def perform_technical_analysis(ticker, start_date, end_date):
+    df = yf.download(ticker, start=start_date, end=end_date)
+    df['SMA20'] = df['Close'].rolling(window=20).mean()
+    df['SMA50'] = df['Close'].rolling(window=50).mean()
+    df['RSI'] = calculate_rsi(df['Close'])
+    df['MACD'], df['Signal_Line'] = calculate_macd(df['Close'])
 
-def buy_sell_hold_logic(stock_price, implied_price, analyst_sentiment, news_sentiment, rsi):
-    signals = []
-    if stock_price < implied_price * 0.9:
-        signals.append("BUY")
-    elif stock_price > implied_price * 1.1:
-        signals.append("SELL")
-    else:
-        signals.append("HOLD")
-    if analyst_sentiment.lower().count('buy') > analyst_sentiment.lower().count('sell'):
-        signals.append("BUY")
-    if 'positive' in news_sentiment.lower():
-        signals.append("BUY")
-    if 'negative' in news_sentiment.lower():
-        signals.append("SELL")
-    if rsi < 30:
-        signals.append("BUY")
-    elif rsi > 70:
-        signals.append("SELL")
-    if signals.count("BUY") > signals.count("SELL"):
-        return "BUY"
-    elif signals.count("SELL") > signals.count("BUY"):
-        return "SELL"
-    else:
-        return "HOLD"
+    fig, (ax0, ax1, ax2) = plt.subplots(3, 1, figsize=(14, 10), sharex=True, gridspec_kw={'height_ratios': [3, 1, 1]})
 
-__all__ = ["evaluate_stock", "config", "calculate_technical_indicators", "fetch_analyst_ratings", "fetch_news_sentiment", "buy_sell_hold_logic"]
+    ax0.plot(df.index, df['Close'], label='Close', color='black')
+    ax0.plot(df.index, df['SMA20'], label='SMA20', color='blue')
+    ax0.plot(df.index, df['SMA50'], label='SMA50', color='red')
+    ax0.set_title(f'{ticker} Price with SMA20 & SMA50')
+    ax0.legend()
+    ax0.grid(True)
+
+    ax1.plot(df.index, df['RSI'], color='purple', label='RSI')
+    ax1.axhline(70, color='red', linestyle='--')
+    ax1.axhline(30, color='green', linestyle='--')
+    ax1.set_title('RSI')
+    ax1.legend()
+    ax1.grid(True)
+
+    ax2.plot(df.index, df['MACD'], label='MACD', color='blue')
+    ax2.plot(df.index, df['Signal_Line'], label='Signal Line', color='orange')
+    ax2.bar(df.index, df['MACD'] - df['Signal_Line'], label='MACD Histogram', color='gray')
+    ax2.set_title('MACD')
+    ax2.legend()
+    ax2.grid(True)
+
+    plt.tight_layout()
+    plot_path = "technical_analysis_plot.png"
+    plt.savefig(plot_path)
+    plt.close()
+    return plot_path
+
+__all__ = ["evaluate_stock", "config", "perform_technical_analysis"]
