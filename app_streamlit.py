@@ -1,3 +1,5 @@
+# --- app_streamlit.py ---
+
 import streamlit as st
 import plotly.graph_objs as go
 import pandas as pd
@@ -54,12 +56,12 @@ if st.button("🚀 Run Analysis"):
                               hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True)
 
-            #  RSI and MACD extraction and display
-            st.subheader("RSI")
-            st.line_chart(tech_df['RSI'].dropna())
+            # --- FIX RSI and MACD extraction ---
+            rsi_series = pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)
+            macd_series = pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)
 
-            st.subheader("MACD")
-            st.line_chart(tech_df['MACD'].dropna())
+            st.line_chart(rsi_series.dropna())
+            st.line_chart(macd_series.dropna())
 
     # Analyst Ratings
     if do_analyst:
@@ -75,7 +77,7 @@ if st.button("🚀 Run Analysis"):
 
     # Final Buy/Sell/Hold Recommendation
     if do_recommendation and do_monte_carlo:
-        latest_rsi = tech_df['RSI'].dropna().iloc[-1] if do_technical and not tech_df.empty and 'RSI' in tech_df else 50
+        latest_rsi = rsi_series.dropna().iloc[-1] if do_technical and not tech_df.empty else 50
         analyst_text = "; ".join(ratings['To Grade']) if do_analyst and not ratings.empty else "Hold"
         news_text = "; ".join(s for _, s in news) if do_news else "Neutral"
         decision = buy_sell_hold_logic(result['stock_price'], result['mean_simulated_price'], analyst_text, news_text, latest_rsi)
