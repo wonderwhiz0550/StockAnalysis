@@ -8,3 +8,4 @@ matplotlib
 plotly
 ta
 fpdf
+xlsxwriter
