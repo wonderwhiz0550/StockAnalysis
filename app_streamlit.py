@@ -41,8 +41,8 @@ if st.button("🚀 Run Analysis"):
         tech_df = calculate_technical_indicators(ticker)
         if not tech_df.empty:
             st.line_chart(tech_df[['Close', 'SMA50', 'SMA200']])
-            st.line_chart(tech_df[['RSI']])
-            st.line_chart(tech_df[['MACD']])
+            st.line_chart(tech_df['RSI'])   # <-- fixed here
+            st.line_chart(tech_df['MACD'])  # <-- fixed here
 
     if do_analyst:
         ratings = fetch_analyst_ratings(ticker)
