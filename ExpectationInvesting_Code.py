@@ -90,6 +90,8 @@ def multi_stage_dcf(revenue, growth_rates, fcf_margin, discount_rate, terminal_g
     if config["terminal_method"] == "perpetual_growth":
         terminal_revenue = revenues[-1] * (1 + terminal_growth_rate)
         terminal_fcf = terminal_revenue * fcf_margin
+        if discount_rate - terminal_growth_rate <= 0:
+            raise ValueError("Discount rate must be greater than terminal growth rate.")
         terminal_value = terminal_fcf / (discount_rate - terminal_growth_rate)
     elif config["terminal_method"] == "exit_multiple":
         terminal_ebitda = revenues[-1] * fcf_margin
@@ -181,11 +183,12 @@ def calculate_technical_indicators(ticker):
     df = yf.download(ticker, period="6mo", interval="1d")
     if df.empty:
         return pd.DataFrame()
-    df['SMA50'] = df['Close'].rolling(50).mean()
-    df['SMA200'] = df['Close'].rolling(200).mean()
-    df['Upper_BB'], df['Lower_BB'] = ta.volatility.BollingerBands(df['Close']).bollinger_hband(), ta.volatility.BollingerBands(df['Close']).bollinger_lband()
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close']).rsi()
-    df['MACD'] = ta.trend.MACD(df['Close']).macd()
+    close_prices = pd.Series(df['Close']) # Ensure df['Close'] is a Series
+    df['SMA50'] = close_prices.rolling(50).mean()
+    df['SMA200'] = close_prices.rolling(200).mean()
+    df['Upper_BB'], df['Lower_BB'] = ta.volatility.BollingerBands(close_prices).bollinger_hband(), ta.volatility.BollingerBands(close_prices).bollinger_lband()
+    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi()
+    df['MACD'] = ta.trend.MACD(close_prices).macd()
     return df
 
 def fetch_analyst_ratings(ticker):
