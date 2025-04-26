@@ -41,7 +41,7 @@ if st.button("🚀 Run Analysis"):
 
     # Technical Indicators
     if do_technical:
-    tech_df = calculate_technical_indicators(ticker)
+        tech_df = calculate_technical_indicators(ticker)
     if not tech_df.empty:
         # Price and Moving Averages Plot
         fig = go.Figure()
