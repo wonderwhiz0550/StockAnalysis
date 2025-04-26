@@ -184,6 +184,15 @@ def calculate_technical_indicators(ticker):
     if df.empty:
         return pd.DataFrame()
     close_prices = pd.Series(df['Close']) # Ensure df['Close'] is a Series
+
+    # --- Debugging ---
+    print(f"Type of df['Close']: {type(df['Close'])}")
+    print(f"Shape of df['Close']: {df['Close'].shape}")
+    print(f"Type of close_prices: {type(close_prices)}")
+    print(f"Shape of close_prices: {close_prices.shape}")
+    print(f"First 5 values of close_prices:\n{close_prices.head()}")
+    # --- End Debugging ---
+
     df['SMA50'] = close_prices.rolling(50).mean()
     df['SMA200'] = close_prices.rolling(200).mean()
     df['Upper_BB'], df['Lower_BB'] = ta.volatility.BollingerBands(close_prices).bollinger_hband(), ta.volatility.BollingerBands(close_prices).bollinger_lband()
