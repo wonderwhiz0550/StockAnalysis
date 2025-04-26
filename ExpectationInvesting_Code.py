@@ -1,3 +1,4 @@
+import ta
 import yfinance as yf
 import requests
 import numpy as np
@@ -174,5 +175,65 @@ def evaluate_stock(ticker, config):
     }
 
     return output, "Success", "valuation_plot.png"
+def calculate_technical_indicators(ticker):
+    df = yf.download(ticker, period="6mo", interval="1d")
+    if df.empty:
+        return pd.DataFrame()
+    df['RSI'] = ta.momentum.RSIIndicator(df['Close']).rsi()
+    df['SMA50'] = df['Close'].rolling(50).mean()
+    df['SMA200'] = df['Close'].rolling(200).mean()
+    df['MACD'] = ta.trend.MACD(df['Close']).macd()
+    return df
 
-__all__ = ["evaluate_stock", "config"]
+
+def fetch_analyst_ratings(ticker):
+    stock = yf.Ticker(ticker)
+    try:
+        rec = stock.recommendations
+        latest = rec.tail(5)
+        return latest[['Firm', 'To Grade']]
+    except Exception:
+        return pd.DataFrame()
+
+
+def fetch_news_sentiment(ticker):
+    # Dummy sentiment scoring for now
+    headlines = [f"{ticker} reported strong earnings", f"{ticker} faces regulatory challenges"]
+    sentiments = ["Positive", "Negative"]
+    return list(zip(headlines, sentiments))
+
+
+def buy_sell_hold_logic(stock_price, implied_price, analyst_sentiment, news_sentiment, rsi):
+    signals = []
+    # Monte Carlo valuation based
+    if stock_price < implied_price * 0.9:
+        signals.append("BUY")
+    elif stock_price > implied_price * 1.1:
+        signals.append("SELL")
+    else:
+        signals.append("HOLD")
+    # Analyst
+    if analyst_sentiment.lower().count('buy') > analyst_sentiment.lower().count('sell'):
+        signals.append("BUY")
+    # News
+    if 'positive' in news_sentiment.lower():
+        signals.append("BUY")
+    if 'negative' in news_sentiment.lower():
+        signals.append("SELL")
+    # RSI
+    if rsi < 30:
+        signals.append("BUY")
+    elif rsi > 70:
+        signals.append("SELL")
+    # Final Decision
+    if signals.count("BUY") > signals.count("SELL"):
+        return "BUY"
+    elif signals.count("SELL") > signals.count("BUY"):
+        return "SELL"
+    else:
+        return "HOLD"
+
+
+# Then add these new functions to __all__:
+
+__all__ = ["evaluate_stock", "config", "calculate_technical_indicators", "fetch_analyst_ratings", "fetch_news_sentiment", "buy_sell_hold_logic"]
