@@ -183,13 +183,13 @@ def calculate_technical_indicators(ticker):
     df = yf.download(ticker, period="6mo", interval="1d")
     if df.empty:
         return pd.DataFrame()
-    close_prices = pd.Series(df['Close']) # Ensure df['Close'] is a Series
+    close_prices = df['Close'] # Ensure df['Close'] is used directly
 
     # --- Debugging ---
     print(f"Type of df['Close']: {type(df['Close'])}")
     print(f"Shape of df['Close']: {df['Close'].shape}")
-    print(f"Type of close_prices: {type(close_prices)}")
-    print(f"Shape of close_prices: {close_prices.shape}")
+    #print(f"Type of close_prices: {type(close_prices)}") # Removed this line
+    #print(f"Shape of close_prices: {close_prices.shape}") # Removed this line
     print(f"First 5 values of close_prices:\n{close_prices.head()}")
     # --- End Debugging ---
 
