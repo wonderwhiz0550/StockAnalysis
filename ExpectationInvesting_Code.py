@@ -183,18 +183,22 @@ def calculate_technical_indicators(ticker):
     df = yf.download(ticker, period="6mo", interval="1d")
     if df.empty:
         return pd.DataFrame()
-    close_prices = df['Close'].copy()  # Explicit Series extraction
-
-    # --- Bollinger Bands Fix ---
-    bb = ta.volatility.BollingerBands(close_prices)
-    df['Upper_BB'] = bb.bollinger_hband().values.flatten()
-    df['Lower_BB'] = bb.bollinger_lband().values.flatten()
-
-    # Other indicators
+    
+    # Explicitly convert to Series using squeeze()
+    close_prices = df['Close'].squeeze()
+    
+    # Calculate indicators
     df['SMA50'] = close_prices.rolling(50).mean()
     df['SMA200'] = close_prices.rolling(200).mean()
-    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi()
-    df['MACD'] = ta.trend.MACD(close_prices).macd()
+    
+    # Fix Bollinger Bands (critical fix)
+    bb = ta.volatility.BollingerBands(close_prices)
+    df['Upper_BB'] = bb.bollinger_hband().to_numpy().flatten()  # Force 1D array
+    df['Lower_BB'] = bb.bollinger_lband().to_numpy().flatten()
+    
+    # Fix RSI and MACD
+    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi().to_numpy().flatten()
+    df['MACD'] = ta.trend.MACD(close_prices).macd().to_numpy().flatten()
     
     return df
 
