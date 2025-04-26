@@ -45,7 +45,7 @@ def generate_excel(result, peers_df):
         'FCF Margin': result['fcf_margin']
     }]).to_excel(writer, index=False, sheet_name='Valuation')
     peers_df.to_excel(writer, index=False, sheet_name='Peers')
-    writer.save()
+    writer.close()
     output.seek(0)
     return output
 
