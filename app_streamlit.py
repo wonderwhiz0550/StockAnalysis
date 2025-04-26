@@ -1,8 +1,9 @@
-# Updated Enhanced Modular Design
+# Updated Enhanced Modular Design with Interactive Charts
 
 # --- app_streamlit.py --- FRONTEND ---
 
 import streamlit as st
+import plotly.graph_objs as go
 from ExpectationInvesting_Code import (
     evaluate_stock, 
     config, 
@@ -11,7 +12,6 @@ from ExpectationInvesting_Code import (
     fetch_news_sentiment, 
     buy_sell_hold_logic
 )
-import yfinance as yf
 
 st.set_page_config(page_title="Stock Decision Helper", layout="wide")
 st.title("📈 Enhanced Stock Valuation & Recommendation Tool")
@@ -20,7 +20,7 @@ ticker = st.text_input("Enter Stock Ticker", value="AAPL").upper()
 st.markdown("### Select Analysis Modules")
 
 do_monte_carlo = st.checkbox("Run Monte Carlo Simulation", value=True)
-do_technical = st.checkbox("Show Technical Indicators (RSI, SMA, MACD)")
+do_technical = st.checkbox("Show Technical Indicators (RSI, SMA, MACD, Bollinger Bands)")
 do_analyst = st.checkbox("Fetch Analyst Ratings")
 do_news = st.checkbox("Fetch News Sentiment")
 do_recommendation = st.checkbox("Generate Final Buy/Sell/Hold Recommendation", value=True)
@@ -40,9 +40,20 @@ if st.button("🚀 Run Analysis"):
     if do_technical:
         tech_df = calculate_technical_indicators(ticker)
         if not tech_df.empty:
-            st.line_chart(tech_df[['Close', 'SMA50', 'SMA200']])
-            st.line_chart(tech_df['RSI'])   # <-- fixed here
-            st.line_chart(tech_df['MACD'])  # <-- fixed here
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
+            if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
+                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
+                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
+            fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
+                              xaxis_title="Date", yaxis_title="Price",
+                              hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.line_chart(tech_df['RSI'])
+            st.line_chart(tech_df['MACD'])
 
     if do_analyst:
         ratings = fetch_analyst_ratings(ticker)
@@ -60,3 +71,7 @@ if st.button("🚀 Run Analysis"):
         news_text = "; ".join(s for _, s in news) if do_news else "Neutral"
         decision = buy_sell_hold_logic(result['stock_price'], result['mean_simulated_price'], analyst_text, news_text, latest_rsi)
         st.success(f"📢 Final Recommendation: **{decision}**")
+
+# --- ExpectationInvesting_Code.py --- BACKEND ---
+
+# Functions remain unchanged.
