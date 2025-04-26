@@ -69,8 +69,8 @@ if st.button("🚀 Run Analysis"):
             st.write("First 5 values of MACD Series:", macd_series.head())
             # --- END DEBUGGING LINES ---
 
-            st.line_chart(rsi_series.dropna())
-            st.line_chart(macd_series.dropna())
+            #st.line_chart(rsi_series.dropna())
+            #st.line_chart(macd_series.dropna())
 
     # Analyst Ratings
     if do_analyst:
