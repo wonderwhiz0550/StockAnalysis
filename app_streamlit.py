@@ -52,8 +52,8 @@ if st.button("🚀 Run Analysis"):
                               hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True)
 
-            st.line_chart(tech_df['RSI'].dropna())
-            st.line_chart(tech_df['MACD'].dropna())
+            st.line_chart(tech_df['RSI'].dropna().squeeze())
+	    st.line_chart(tech_df['MACD'].dropna().squeeze())
 
     if do_analyst:
         ratings = fetch_analyst_ratings(ticker)
