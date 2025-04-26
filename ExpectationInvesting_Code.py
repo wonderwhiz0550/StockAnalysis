@@ -180,14 +180,18 @@ def evaluate_stock(ticker, config):
 
 # -------------------New Code here
 def calculate_technical_indicators(ticker):
-    df = yf.download(ticker, period="1y", interval="1d")  # Use 1 year for better SMA visibility
+    # Fetch 1 year of data (not future dates)
+    df = yf.download(ticker, period="1y", interval="1d")
+    
     if df.empty:
         return pd.DataFrame()
     
-    close_prices = df['Close'].squeeze()
+    # Ensure dates are valid (no future dates)
+    df = df[df.index <= pd.Timestamp.now()]
     
     # Calculate indicators
-    df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()  # min_periods=1 to avoid NaNs
+    close_prices = df['Close'].squeeze()
+    df['SMA50'] = close_prices.rolling(50, min_periods=1).mean()
     df['SMA200'] = close_prices.rolling(200, min_periods=1).mean()
     
     # Bollinger Bands
@@ -195,11 +199,7 @@ def calculate_technical_indicators(ticker):
     df['Upper_BB'] = bb.bollinger_hband().to_numpy().flatten()
     df['Lower_BB'] = bb.bollinger_lband().to_numpy().flatten()
     
-    # RSI and MACD
-    df['RSI'] = ta.momentum.RSIIndicator(close_prices).rsi()
-    df['MACD'] = ta.trend.MACD(close_prices).macd()
-    
-    return df.dropna()  # Remove rows with missing values
+    return df.dropna()
 
 def fetch_analyst_ratings(ticker):
     stock = yf.Ticker(ticker)
