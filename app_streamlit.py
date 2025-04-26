@@ -43,10 +43,16 @@ if st.button("🚀 Run Analysis"):
 # Replace the existing technical indicators plotting code with:
 if do_technical:
     tech_df = calculate_technical_indicators(ticker)
+    
+    # Debugging: Show DataFrame info
+    st.write("Data Preview (First 5 Rows):")
+    st.write(tech_df.head())
+    st.write("DataFrame Shape:", tech_df.shape)
+    
     if not tech_df.empty:
         fig = go.Figure()
         
-        # Add Close Price
+        # Plot Close Price only (simplified)
         fig.add_trace(go.Scatter(
             x=tech_df.index,
             y=tech_df['Close'],
@@ -54,47 +60,14 @@ if do_technical:
             line=dict(color='blue')
         ))
         
-        # Add SMAs
-        fig.add_trace(go.Scatter(
-            x=tech_df.index,
-            y=tech_df['SMA50'],
-            name='SMA50',
-            line=dict(color='orange')
-        ))
-        fig.add_trace(go.Scatter(
-            x=tech_df.index,
-            y=tech_df['SMA200'],
-            name='SMA200',
-            line=dict(color='green')
-        ))
-        
-        # Add Bollinger Bands
-        fig.add_trace(go.Scatter(
-            x=tech_df.index,
-            y=tech_df['Upper_BB'],
-            name='Upper BB',
-            line=dict(color='gray', dash='dot')
-        ))
-        fig.add_trace(go.Scatter(
-            x=tech_df.index,
-            y=tech_df['Lower_BB'],
-            name='Lower BB',
-            line=dict(color='gray', dash='dot'),
-            fill='tonexty'
-        ))
-        
-        # Fix layout
         fig.update_layout(
-            title=f"{ticker} Price with Technical Indicators",
+            title=f"{ticker} Close Price",
             xaxis_title="Date",
             yaxis_title="Price (USD)",
-            xaxis_range=[tech_df.index.min(), tech_df.index.max()],  # Force valid date range
-            height=600
+            height=500
         )
         
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("No technical indicators data available.")
 
     # Analyst Ratings
     if do_analyst:
