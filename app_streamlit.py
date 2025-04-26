@@ -59,16 +59,16 @@ if st.button("🚀 Run Analysis"):
             # --- FIX RSI and MACD extraction ---
             rsi_series = tech_df['RSI'].squeeze()
             macd_series = tech_df['MACD'].squeeze()
-            st.write("Shape of RSI Series:", rsi_series.shape)
-            st.write("Type of RSI Series:", type(rsi_series))
+           # st.write("Shape of RSI Series:", rsi_series.shape)
+            #st.write("Type of RSI Series:", type(rsi_series))
             st.write("RSI Series Type:", type(tech_df['RSI']))
             # --- ADD THESE LINES FOR DEBUGGING ---
-            st.write("Shape of RSI Series:", rsi_series.shape)
-            st.write("Type of RSI Series:", type(rsi_series))
-            st.write("First 5 values of RSI Series:", rsi_series.head())
-            st.write("Shape of MACD Series:", macd_series.shape)
-            st.write("Type of MACD Series:", type(macd_series))
-            st.write("First 5 values of MACD Series:", macd_series.head())
+            #st.write("Shape of RSI Series:", rsi_series.shape)
+            #st.write("Type of RSI Series:", type(rsi_series))
+            #st.write("First 5 values of RSI Series:", rsi_series.head())
+            #st.write("Shape of MACD Series:", macd_series.shape)
+            #st.write("Type of MACD Series:", type(macd_series))
+            #st.write("First 5 values of MACD Series:", macd_series.head())
             # --- END DEBUGGING LINES ---
 
             st.line_chart(tech_df['RSI'].dropna())
