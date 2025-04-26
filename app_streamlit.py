@@ -38,22 +38,27 @@ if st.button("🚀 Run Analysis"):
             st.image(plot_path, caption="Monte Carlo Simulation")
 
     if do_technical:
-        tech_df = calculate_technical_indicators(ticker)
-        if not tech_df.empty:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
-            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
-            if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
-                fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
-            fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
-                              xaxis_title="Date", yaxis_title="Price",
-                              hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
+    tech_df = calculate_technical_indicators(ticker)
+    if not tech_df.empty:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Close'], mode='lines', name='Close'))
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA50'], mode='lines', name='SMA50'))
+        fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['SMA200'], mode='lines', name='SMA200'))
+        if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Upper_BB'], mode='lines', name='Upper BB', line=dict(dash='dot')))
+            fig.add_trace(go.Scatter(x=tech_df.index, y=tech_df['Lower_BB'], mode='lines', name='Lower BB', line=dict(dash='dot')))
+        fig.update_layout(title=f"{ticker} Price with Moving Averages and Bollinger Bands",
+                          xaxis_title="Date", yaxis_title="Price",
+                          hovermode="x unified")
+        st.plotly_chart(fig, use_container_width=True)
 
-            st.line_chart(tech_df['RSI'].dropna().squeeze())
-            st.line_chart(tech_df['MACD'].dropna().squeeze())
+        # -- Extract RSI and MACD properly as Series
+        rsi_series = pd.Series(tech_df['RSI'].values.flatten(), index=tech_df.index)
+        macd_series = pd.Series(tech_df['MACD'].values.flatten(), index=tech_df.index)
+
+        # Now plot
+        st.line_chart(rsi_series.dropna())
+        st.line_chart(macd_series.dropna())
 
     if do_analyst:
         ratings = fetch_analyst_ratings(ticker)
