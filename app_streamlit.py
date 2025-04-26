@@ -1,15 +1,15 @@
-# Updated Enhanced Modular Design with Interactive Charts
+# Updated Enhanced Modular Design with Interactive Charts and Correct Indentation
 
 # --- app_streamlit.py --- FRONTEND ---
 
 import streamlit as st
 import plotly.graph_objs as go
 from ExpectationInvesting_Code import (
-    evaluate_stock, 
-    config, 
-    calculate_technical_indicators, 
-    fetch_analyst_ratings, 
-    fetch_news_sentiment, 
+    evaluate_stock,
+    config,
+    calculate_technical_indicators,
+    fetch_analyst_ratings,
+    fetch_news_sentiment,
     buy_sell_hold_logic
 )
 
@@ -51,8 +51,9 @@ if st.button("🚀 Run Analysis"):
                               xaxis_title="Date", yaxis_title="Price",
                               hovermode="x unified")
             st.plotly_chart(fig, use_container_width=True)
+
             st.line_chart(tech_df['RSI'].dropna().squeeze())
-	    st.line_chart(tech_df['MACD'].dropna().squeeze())
+            st.line_chart(tech_df['MACD'].dropna().squeeze())
 
     if do_analyst:
         ratings = fetch_analyst_ratings(ticker)
