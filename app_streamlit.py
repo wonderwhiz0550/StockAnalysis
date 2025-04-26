@@ -44,62 +44,57 @@ if st.button("🚀 Run Analysis"):
 if do_technical:
     tech_df = calculate_technical_indicators(ticker)
     if not tech_df.empty:
-        # Price and Moving Averages Plot
         fig = go.Figure()
         
-        # Add traces with explicit names
+        # Add Close Price
         fig.add_trace(go.Scatter(
-            x=tech_df.index, 
-            y=tech_df['Close'], 
-            mode='lines', 
+            x=tech_df.index,
+            y=tech_df['Close'],
             name='Close Price',
-            line=dict(color='royalblue', width=2)
-        ))
-        fig.add_trace(go.Scatter(
-            x=tech_df.index, 
-            y=tech_df['SMA50'], 
-            mode='lines', 
-            name='SMA50 (50-Day Moving Average)',
-            line=dict(color='orange', width=1.5)
-        ))
-        fig.add_trace(go.Scatter(
-            x=tech_df.index, 
-            y=tech_df['SMA200'], 
-            mode='lines', 
-            name='SMA200 (200-Day Moving Average)',
-            line=dict(color='green', width=1.5)
+            line=dict(color='blue')
         ))
         
-        # Bollinger Bands (if available)
-        if 'Upper_BB' in tech_df.columns and 'Lower_BB' in tech_df.columns:
-            fig.add_trace(go.Scatter(
-                x=tech_df.index, 
-                y=tech_df['Upper_BB'], 
-                mode='lines', 
-                name='Upper Bollinger Band',
-                line=dict(color='gray', dash='dot', width=1)
-            ))
-            fig.add_trace(go.Scatter(
-                x=tech_df.index, 
-                y=tech_df['Lower_BB'], 
-                mode='lines', 
-                name='Lower Bollinger Band',
-                line=dict(color='gray', dash='dot', width=1),
-                fill='tonexty'  # Fills between Upper and Lower bands
-            ))
+        # Add SMAs
+        fig.add_trace(go.Scatter(
+            x=tech_df.index,
+            y=tech_df['SMA50'],
+            name='SMA50',
+            line=dict(color='orange')
+        ))
+        fig.add_trace(go.Scatter(
+            x=tech_df.index,
+            y=tech_df['SMA200'],
+            name='SMA200',
+            line=dict(color='green')
+        ))
         
-        # Update layout
+        # Add Bollinger Bands
+        fig.add_trace(go.Scatter(
+            x=tech_df.index,
+            y=tech_df['Upper_BB'],
+            name='Upper BB',
+            line=dict(color='gray', dash='dot')
+        ))
+        fig.add_trace(go.Scatter(
+            x=tech_df.index,
+            y=tech_df['Lower_BB'],
+            name='Lower BB',
+            line=dict(color='gray', dash='dot'),
+            fill='tonexty'
+        ))
+        
+        # Fix layout
         fig.update_layout(
             title=f"{ticker} Price with Technical Indicators",
             xaxis_title="Date",
             yaxis_title="Price (USD)",
-            hovermode="x unified",
-            showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            xaxis_range=[tech_df.index.min(), tech_df.index.max()],  # Force valid date range
             height=600
         )
         
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No technical indicators data available.")
 
     # Analyst Ratings
     if do_analyst:
