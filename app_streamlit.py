@@ -5,13 +5,9 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import datetime
 from datetime import date, timedelta
-from pandas_datareader import data as pdr
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-# Override pandas_datareader's get_data_yahoo
-yf.pdr_override()
 
 # Set the app title and description
 st.title('Stock Analysis Tool')
@@ -49,9 +45,9 @@ with st.sidebar:
 @st.cache_data(ttl=3600)
 def load_data(ticker, period=None, start=None, end=None):
     if start and end:
-        data = pdr.get_data_yahoo(ticker, start=start, end=end)
+        data = yf.download(ticker, start=start, end=end)
     else:
-        data = pdr.get_data_yahoo(ticker, period=period)
+        data = yf.download(ticker, period=period)
     
     return data
 
