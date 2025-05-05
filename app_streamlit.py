@@ -6,7 +6,6 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import talib as ta
 from configparser import ConfigParser
 
 # Set page title and layout
@@ -14,13 +13,57 @@ st.set_page_config(page_title="Stock Analysis Tool", layout="wide")
 
 # Load configuration
 config = ConfigParser()
-config.read('config.ini')
+try:
+    config.read('config.ini')
+except:
+    # Default config if file is not found
+    config = ConfigParser()
+    config['General'] = {
+        'default_ticker': 'AAPL',
+        'default_period': '1y',
+        'default_interval': '1d'
+    }
+    config['TechnicalAnalysis'] = {
+        'ma_short': '20',
+        'ma_medium': '50',
+        'ma_long': '200',
+        'rsi_period': '14',
+        'macd_fast': '12',
+        'macd_slow': '26',
+        'macd_signal': '9'
+    }
+    config['MonteCarlo'] = {
+        'simulations': '1000',
+        'confidence_level': '0.95',
+        'future_days': '30'
+    }
 
 def get_config_value(section, key, default=None):
     try:
         return config.get(section, key)
     except:
         return default
+
+# Technical indicator functions (replacing TA-Lib)
+def calculate_rsi(data, window=14):
+    delta = data.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    
+    avg_gain = gain.rolling(window=window).mean()
+    avg_loss = loss.rolling(window=window).mean()
+    
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+def calculate_macd(data, fast_period=12, slow_period=26, signal_period=9):
+    exp1 = data.ewm(span=fast_period, adjust=False).mean()
+    exp2 = data.ewm(span=slow_period, adjust=False).mean()
+    macd_line = exp1 - exp2
+    signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
 
 # App title and description
 st.title('Stock Analysis Tool')
@@ -157,13 +200,13 @@ if st.button('Run Analysis'):
                         df[f'MA{ma_long}'] = df['Close'].rolling(ma_long).mean()
                         
                         # RSI
-                        df['RSI'] = ta.RSI(df['Close'], timeperiod=rsi_period)
+                        df['RSI'] = calculate_rsi(df['Close'], window=rsi_period)
                         
                         # MACD
-                        macd, macd_signal, macd_hist = ta.MACD(df['Close'], 
-                                                              fastperiod=macd_fast, 
-                                                              slowperiod=macd_slow, 
-                                                              signalperiod=macd_signal)
+                        macd, macd_signal, macd_hist = calculate_macd(df['Close'], 
+                                                                    fast_period=macd_fast, 
+                                                                    slow_period=macd_slow, 
+                                                                    signal_period=macd_signal)
                         df['MACD'] = macd
                         df['MACD_Signal'] = macd_signal
                         df['MACD_Hist'] = macd_hist
