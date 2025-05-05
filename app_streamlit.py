@@ -49,6 +49,10 @@ def load_data(ticker, period=None, start=None, end=None):
     else:
         data = yf.download(ticker, period=period)
     
+    # Check if 'Adj Close' column exists, if not use 'Close'
+    if 'Adj Close' not in data.columns:
+        data['Adj Close'] = data['Close']
+    
     return data
 
 # Function to calculate daily returns
