@@ -49,6 +49,11 @@ def load_data(ticker, period=None, start=None, end=None):
     else:
         data = yf.download(ticker, period=period)
     
+    # Handle MultiIndex columns if present
+    if isinstance(data.columns, pd.MultiIndex):
+        # Convert MultiIndex to single level
+        data.columns = data.columns.get_level_values(0)
+    
     # Check if 'Adj Close' column exists, if not use 'Close'
     if 'Adj Close' not in data.columns:
         data['Adj Close'] = data['Close']
