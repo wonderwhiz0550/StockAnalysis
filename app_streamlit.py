@@ -382,11 +382,11 @@ if st.button('Run Analysis'):
                             daily_returns = np.random.normal(mu, sigma, future_days) + 1
                             
                             # Start price is the last price
-                            price_series = [last_price]
+                            price_series = [float(last_price)]
                             
                             # Calculate price for each day
                             for x in daily_returns:
-                                price_series.append(price_series[-1] * x)
+                                price_series.append(float(price_series[-1] * x))
                             
                             # Store simulation
                             simulation_df[i] = price_series
@@ -396,17 +396,19 @@ if st.button('Run Analysis'):
                         
                         # Add traces for each simulation run
                         for i in range(min(50, simulations)):  # Only plot 50 lines for visibility
+                            # Convert to numeric safely
+                            y_values = pd.to_numeric(simulation_df[i], errors='coerce')
                             fig.add_trace(
                                 go.Scatter(
-                                    y=simulation_df[i],
+                                    y=y_values,
                                     mode='lines',
                                     line=dict(width=0.5, color='rgba(100, 100, 100, 0.2)'),
                                     showlegend=False
                                 )
                             )
                         
-                        # Add trace for the mean
-                        mean_simulation = simulation_df.mean(axis=1)
+                        # Add trace for the mean (convert to numeric safely)
+                        mean_simulation = simulation_df.apply(pd.to_numeric, errors='coerce').mean(axis=1)
                         fig.add_trace(
                             go.Scatter(
                                 y=mean_simulation,
@@ -421,8 +423,10 @@ if st.button('Run Analysis'):
                         lower_ci = []
                         
                         for i in range(len(mean_simulation)):
-                            upper = np.percentile(simulation_df.iloc[i], 100 * confidence_level)
-                            lower = np.percentile(simulation_df.iloc[i], 100 * (1 - confidence_level))
+                            # Convert to numeric safely
+                            row_values = pd.to_numeric(simulation_df.iloc[i], errors='coerce').dropna()
+                            upper = np.percentile(row_values, 100 * confidence_level)
+                            lower = np.percentile(row_values, 100 * (1 - confidence_level))
                             upper_ci.append(upper)
                             lower_ci.append(lower)
                         
@@ -461,13 +465,16 @@ if st.button('Run Analysis'):
                         # Calculate statistics for the final day
                         final_day = simulation_df.iloc[-1]
                         
-                        expected_price = round(final_day.mean(), 2)
-                        ci_lower = round(np.percentile(final_day, 100 * (1 - confidence_level)), 2)
-                        ci_upper = round(np.percentile(final_day, 100 * confidence_level), 2)
+                        # Convert to numeric and handle any potential non-numeric values
+                        final_day_numeric = pd.to_numeric(final_day, errors='coerce')
                         
-                        price_change = round(((expected_price / last_price) - 1) * 100, 2)
-                        max_price = round(final_day.max(), 2)
-                        min_price = round(final_day.min(), 2)
+                        expected_price = round(final_day_numeric.mean(), 2)
+                        ci_lower = round(np.percentile(final_day_numeric.dropna(), 100 * (1 - confidence_level)), 2)
+                        ci_upper = round(np.percentile(final_day_numeric.dropna(), 100 * confidence_level), 2)
+                        
+                        price_change = round(((expected_price / float(last_price)) - 1) * 100, 2)
+                        max_price = round(final_day_numeric.max(), 2)
+                        min_price = round(final_day_numeric.min(), 2)
                         
                         col1, col2, col3 = st.columns(3)
                         
