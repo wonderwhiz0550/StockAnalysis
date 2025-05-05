@@ -1,516 +1,256 @@
 import streamlit as st
 import pandas as pd
-import yfinance as yf
 import numpy as np
-import datetime as dt
+import yfinance as yf
 import matplotlib.pyplot as plt
+import datetime
+from datetime import date, timedelta
+from pandas_datareader import data as pdr
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from configparser import ConfigParser
 
-# Set page title and layout
-st.set_page_config(page_title="Stock Analysis Tool", layout="wide")
+# Override pandas_datareader's get_data_yahoo
+yf.pdr_override()
 
-# Load configuration
-config = ConfigParser()
-try:
-    config.read('config.ini')
-except:
-    # Default config if file is not found
-    config = ConfigParser()
-    config['General'] = {
-        'default_ticker': 'AAPL',
-        'default_period': '1y',
-        'default_interval': '1d'
-    }
-    config['TechnicalAnalysis'] = {
-        'ma_short': '20',
-        'ma_medium': '50',
-        'ma_long': '200',
-        'rsi_period': '14',
-        'macd_fast': '12',
-        'macd_slow': '26',
-        'macd_signal': '9'
-    }
-    config['MonteCarlo'] = {
-        'simulations': '1000',
-        'confidence_level': '0.95',
-        'future_days': '30'
-    }
-
-def get_config_value(section, key, default=None):
-    try:
-        return config.get(section, key)
-    except:
-        return default
-
-# Technical indicator functions (replacing TA-Lib)
-def calculate_rsi(data, window=14):
-    delta = data.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    
-    avg_gain = gain.rolling(window=window).mean()
-    avg_loss = loss.rolling(window=window).mean()
-    
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-def calculate_macd(data, fast_period=12, slow_period=26, signal_period=9):
-    exp1 = data.ewm(span=fast_period, adjust=False).mean()
-    exp2 = data.ewm(span=slow_period, adjust=False).mean()
-    macd_line = exp1 - exp2
-    signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
-    histogram = macd_line - signal_line
-    return macd_line, signal_line, histogram
-
-# App title and description
+# Set the app title and description
 st.title('Stock Analysis Tool')
-st.write('Analyze stocks with technical indicators and Monte Carlo simulations')
+st.write('This app allows you to analyze stocks and run Monte Carlo simulations.')
 
-# Create tabs
-tab1, tab2, tab3 = st.tabs(["Main Settings", "Technical Analysis", "Monte Carlo Simulation"])
-
-# Main Settings Tab
-with tab1:
-    col1, col2 = st.columns(2)
+# Sidebar inputs
+with st.sidebar:
+    st.header('Input Parameters')
     
-    with col1:
-        # Ticker symbol
-        default_ticker = get_config_value('General', 'default_ticker', 'AAPL')
-        ticker = st.text_input('Enter Stock Ticker Symbol', value=default_ticker)
-        
-        # Time period
-        default_period = get_config_value('General', 'default_period', '1y')
-        period_options = ['1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'max']
-        period = st.selectbox('Select Time Period', period_options, 
-                             index=period_options.index(default_period) if default_period in period_options else 3)
-        
-        # Analysis selection
-        st.subheader("Select Analysis to Perform")
-        do_technical = st.checkbox("Technical Analysis", value=True)
-        do_monte_carlo = st.checkbox("Monte Carlo Simulation", value=True)
+    # Stock symbol input
+    ticker = st.text_input('Enter Stock Symbol (e.g., AAPL, GOOG)', 'AAPL')
     
-    with col2:
-        # Interval
-        default_interval = get_config_value('General', 'default_interval', '1d')
-        interval_options = ['1d', '5d', '1wk', '1mo', '3mo']
-        interval = st.selectbox('Select Interval', interval_options,
-                              index=interval_options.index(default_interval) if default_interval in interval_options else 0)
-        
-        # Future days prediction (for Monte Carlo)
-        default_future_days = int(get_config_value('MonteCarlo', 'future_days', '30'))
-        future_days = st.number_input('Days to predict in the future', 
-                                    min_value=1, max_value=365, value=default_future_days)
+    # Time period selection
+    period_options = ['1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
+    period = st.selectbox('Select Time Period', period_options, index=3)
+    
+    # Date range selection (only visible if 'Custom' is selected)
+    use_custom_dates = st.checkbox('Use Custom Date Range')
+    
+    if use_custom_dates:
+        today = date.today()
+        start_date = st.date_input('Start Date', today - timedelta(days=365))
+        end_date = st.date_input('End Date', today)
+    
+    # Monte Carlo simulation parameters
+    st.header('Monte Carlo Simulation')
+    run_simulation = st.checkbox('Run Monte Carlo Simulation', value=True)
+    
+    if run_simulation:
+        num_simulations = st.slider('Number of Simulations', min_value=10, max_value=1000, value=200)
+        num_days = st.slider('Number of Days to Predict', min_value=30, max_value=365, value=252)
+        confidence_level = st.slider('Confidence Level (%)', min_value=80, max_value=99, value=95)
 
-# Technical Analysis Tab
-with tab2:
-    if do_technical:
-        st.header("Technical Analysis Settings")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Technical Indicators - Moving Averages
-            st.subheader("Moving Averages")
-            default_ma_short = int(get_config_value('TechnicalAnalysis', 'ma_short', '20'))
-            default_ma_medium = int(get_config_value('TechnicalAnalysis', 'ma_medium', '50'))
-            default_ma_long = int(get_config_value('TechnicalAnalysis', 'ma_long', '200'))
-            
-            ma_short = st.number_input('Short MA period', min_value=1, max_value=100, value=default_ma_short)
-            ma_medium = st.number_input('Medium MA period', min_value=1, max_value=200, value=default_ma_medium)
-            ma_long = st.number_input('Long MA period', min_value=1, max_value=500, value=default_ma_long)
-        
-        with col2:
-            # Technical Indicators - RSI, MACD
-            st.subheader("Oscillators")
-            default_rsi_period = int(get_config_value('TechnicalAnalysis', 'rsi_period', '14'))
-            rsi_period = st.number_input('RSI Period', min_value=1, max_value=50, value=default_rsi_period)
-            
-            default_macd_fast = int(get_config_value('TechnicalAnalysis', 'macd_fast', '12'))
-            default_macd_slow = int(get_config_value('TechnicalAnalysis', 'macd_slow', '26'))
-            default_macd_signal = int(get_config_value('TechnicalAnalysis', 'macd_signal', '9'))
-            
-            macd_fast = st.number_input('MACD Fast Period', min_value=1, max_value=50, value=default_macd_fast)
-            macd_slow = st.number_input('MACD Slow Period', min_value=1, max_value=100, value=default_macd_slow)
-            macd_signal = st.number_input('MACD Signal Period', min_value=1, max_value=50, value=default_macd_signal)
+# Function to load stock data
+@st.cache_data(ttl=3600)
+def load_data(ticker, period=None, start=None, end=None):
+    if start and end:
+        data = pdr.get_data_yahoo(ticker, start=start, end=end)
     else:
-        st.info("Technical Analysis is disabled. Enable it in the Main Settings tab.")
+        data = pdr.get_data_yahoo(ticker, period=period)
+    
+    return data
 
-# Monte Carlo Tab
-with tab3:
-    if do_monte_carlo:
-        st.header("Monte Carlo Simulation Settings")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            default_simulations = int(get_config_value('MonteCarlo', 'simulations', '1000'))
-            simulations = st.number_input('Number of Simulations', 
-                                        min_value=100, max_value=10000, value=default_simulations)
-        
-        with col2:
-            default_confidence_level = float(get_config_value('MonteCarlo', 'confidence_level', '0.95'))
-            confidence_level = st.slider('Confidence Level', 
-                                       min_value=0.5, max_value=0.99, value=default_confidence_level, step=0.01)
-    else:
-        st.info("Monte Carlo Simulation is disabled. Enable it in the Main Settings tab.")
+# Function to calculate daily returns
+def calculate_returns(data):
+    data['Daily Return'] = data['Adj Close'].pct_change()
+    return data
 
-# Run Analysis Button
-if st.button('Run Analysis'):
-    if ticker:
-        try:
-            # Download stock data
-            stock_data = yf.download(ticker, period=period, interval=interval)
-            
-            if stock_data.empty:
-                st.error("No data found for the specified ticker or period.")
-            else:
-                # Display basic information
-                st.header(f"{ticker} Stock Analysis")
-                st.write(f"Period: {period}, Interval: {interval}")
-                
-                # Create tabs for results
-                result_tabs = []
-                
-                if do_technical:
-                    result_tabs.append("Technical Analysis")
-                
-                if do_monte_carlo:
-                    result_tabs.append("Monte Carlo Simulation")
-                
-                result_tabs.append("Raw Data")
-                
-                results = st.tabs(result_tabs)
-                
-                tab_index = 0
-                
-                # Technical Analysis
-                if do_technical:
-                    with results[tab_index]:
-                        st.subheader("Technical Analysis")
-                        
-                        # Calculate technical indicators
-                        df = stock_data.copy()
-                        
-                        # Moving Averages
-                        df[f'MA{ma_short}'] = df['Close'].rolling(ma_short).mean()
-                        df[f'MA{ma_medium}'] = df['Close'].rolling(ma_medium).mean()
-                        df[f'MA{ma_long}'] = df['Close'].rolling(ma_long).mean()
-                        
-                        # RSI
-                        df['RSI'] = calculate_rsi(df['Close'], window=rsi_period)
-                        
-                        # MACD
-                        macd, macd_signal, macd_hist = calculate_macd(df['Close'], 
-                                                                    fast_period=macd_fast, 
-                                                                    slow_period=macd_slow, 
-                                                                    signal_period=macd_signal)
-                        df['MACD'] = macd
-                        df['MACD_Signal'] = macd_signal
-                        df['MACD_Hist'] = macd_hist
-                        
-                        # Create plots
-                        # Price and Moving Averages
-                        fig = make_subplots(rows=3, cols=1, 
-                                           shared_xaxes=True,
-                                           vertical_spacing=0.05,
-                                           row_heights=[0.5, 0.25, 0.25],
-                                           subplot_titles=('Price and Moving Averages', 'RSI', 'MACD'))
-                        
-                        # Candlestick plot
-                        fig.add_trace(
-                            go.Candlestick(
-                                x=df.index,
-                                open=df['Open'],
-                                high=df['High'],
-                                low=df['Low'],
-                                close=df['Close'],
-                                name='Price'
-                            ),
-                            row=1, col=1
-                        )
-                        
-                        # Moving averages
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df[f'MA{ma_short}'], 
-                                      name=f'MA{ma_short}', line=dict(color='blue')),
-                            row=1, col=1
-                        )
-                        
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df[f'MA{ma_medium}'], 
-                                      name=f'MA{ma_medium}', line=dict(color='orange')),
-                            row=1, col=1
-                        )
-                        
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df[f'MA{ma_long}'], 
-                                      name=f'MA{ma_long}', line=dict(color='green')),
-                            row=1, col=1
-                        )
-                        
-                        # RSI
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df['RSI'], name='RSI', line=dict(color='purple')),
-                            row=2, col=1
-                        )
-                        
-                        # Add RSI overbought/oversold lines
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=[70] * len(df), name='Overbought', 
-                                      line=dict(color='red', dash='dash')),
-                            row=2, col=1
-                        )
-                        
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=[30] * len(df), name='Oversold', 
-                                      line=dict(color='green', dash='dash')),
-                            row=2, col=1
-                        )
-                        
-                        # MACD
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df['MACD'], name='MACD', line=dict(color='blue')),
-                            row=3, col=1
-                        )
-                        
-                        fig.add_trace(
-                            go.Scatter(x=df.index, y=df['MACD_Signal'], name='Signal', line=dict(color='red')),
-                            row=3, col=1
-                        )
-                        
-                        fig.add_trace(
-                            go.Bar(x=df.index, y=df['MACD_Hist'], name='Histogram', marker_color='green'),
-                            row=3, col=1
-                        )
-                        
-                        # Update layout
-                        fig.update_layout(
-                            title=f'{ticker} Technical Analysis',
-                            height=900,
-                            xaxis_rangeslider_visible=False
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Show signals
-                        st.subheader("Technical Signals")
-                        
-                        # Current values
-                        current_price = df['Close'].iloc[-1]
-                        current_ma_short = df[f'MA{ma_short}'].iloc[-1]
-                        current_ma_medium = df[f'MA{ma_medium}'].iloc[-1]
-                        current_ma_long = df[f'MA{ma_long}'].iloc[-1]
-                        current_rsi = df['RSI'].iloc[-1]
-                        current_macd = df['MACD'].iloc[-1]
-                        current_macd_signal = df['MACD_Signal'].iloc[-1]
-                        
-                        # Signal columns
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.metric("Current Price", f"${current_price:.2f}")
-                            st.metric(f"MA {ma_short}", f"${current_ma_short:.2f}", 
-                                     f"{((current_price/current_ma_short)-1)*100:.2f}%")
-                            st.metric(f"MA {ma_medium}", f"${current_ma_medium:.2f}", 
-                                     f"{((current_price/current_ma_medium)-1)*100:.2f}%")
-                            st.metric(f"MA {ma_long}", f"${current_ma_long:.2f}", 
-                                     f"{((current_price/current_ma_long)-1)*100:.2f}%")
-                        
-                        with col2:
-                            # RSI Signal
-                            rsi_signal = "NEUTRAL"
-                            if current_rsi > 70:
-                                rsi_signal = "OVERBOUGHT"
-                            elif current_rsi < 30:
-                                rsi_signal = "OVERSOLD"
-                            
-                            st.metric("RSI", f"{current_rsi:.2f}", rsi_signal)
-                            
-                            # MACD Signal
-                            macd_signal_text = "NEUTRAL"
-                            if current_macd > current_macd_signal:
-                                macd_signal_text = "BULLISH"
-                            else:
-                                macd_signal_text = "BEARISH"
-                            
-                            st.metric("MACD", f"{current_macd:.4f}", macd_signal_text)
-                            st.metric("MACD Signal", f"{current_macd_signal:.4f}")
-                        
-                        with col3:
-                            # Moving Average signals
-                            ma_short_medium_signal = "NEUTRAL"
-                            if current_ma_short > current_ma_medium:
-                                ma_short_medium_signal = "BULLISH"
-                            else:
-                                ma_short_medium_signal = "BEARISH"
-                            
-                            ma_medium_long_signal = "NEUTRAL"
-                            if current_ma_medium > current_ma_long:
-                                ma_medium_long_signal = "BULLISH"
-                            else:
-                                ma_medium_long_signal = "BEARISH"
-                            
-                            st.metric(f"MA{ma_short} vs MA{ma_medium}", ma_short_medium_signal)
-                            st.metric(f"MA{ma_medium} vs MA{ma_long}", ma_medium_long_signal)
-                    
-                    tab_index += 1
-                
-                # Monte Carlo Simulation
-                if do_monte_carlo:
-                    with results[tab_index]:
-                        st.subheader("Monte Carlo Simulation")
-                        
-                        # Calculate daily returns
-                        df = stock_data.copy()
-                        df['Daily Return'] = df['Close'].pct_change()
-                        
-                        # Get mean and standard deviation of daily returns
-                        mu = df['Daily Return'].mean()
-                        sigma = df['Daily Return'].std()
-                        
-                        # Get last price
-                        last_price = df['Close'].iloc[-1]
-                        
-                        # Run simulation
-                        simulation_df = pd.DataFrame()
-                        
-                        for i in range(simulations):
-                            # Create list of daily returns with same mean and std
-                            daily_returns = np.random.normal(mu, sigma, future_days) + 1
-                            
-                            # Start price is the last price
-                            price_series = [float(last_price)]
-                            
-                            # Calculate price for each day
-                            for x in daily_returns:
-                                price_series.append(float(price_series[-1] * x))
-                            
-                            # Store simulation
-                            simulation_df[i] = price_series
-                        
-                        # Plot
-                        fig = go.Figure()
-                        
-                        # Add traces for each simulation run
-                        for i in range(min(50, simulations)):  # Only plot 50 lines for visibility
-                            # Convert to numeric safely
-                            y_values = pd.to_numeric(simulation_df[i], errors='coerce')
-                            fig.add_trace(
-                                go.Scatter(
-                                    y=y_values,
-                                    mode='lines',
-                                    line=dict(width=0.5, color='rgba(100, 100, 100, 0.2)'),
-                                    showlegend=False
-                                )
-                            )
-                        
-                        # Add trace for the mean (convert to numeric safely)
-                        mean_simulation = simulation_df.apply(pd.to_numeric, errors='coerce').mean(axis=1)
-                        fig.add_trace(
-                            go.Scatter(
-                                y=mean_simulation,
-                                mode='lines',
-                                line=dict(width=2, color='blue'),
-                                name='Mean'
-                            )
-                        )
-                        
-                        # Add confidence interval
-                        upper_ci = []
-                        lower_ci = []
-                        
-                        for i in range(len(mean_simulation)):
-                            # Convert to numeric safely
-                            row_values = pd.to_numeric(simulation_df.iloc[i], errors='coerce').dropna()
-                            upper = np.percentile(row_values, 100 * confidence_level)
-                            lower = np.percentile(row_values, 100 * (1 - confidence_level))
-                            upper_ci.append(upper)
-                            lower_ci.append(lower)
-                        
-                        fig.add_trace(
-                            go.Scatter(
-                                y=upper_ci,
-                                mode='lines',
-                                line=dict(width=1, color='red'),
-                                name=f'Upper {confidence_level*100}% CI'
-                            )
-                        )
-                        
-                        fig.add_trace(
-                            go.Scatter(
-                                y=lower_ci,
-                                mode='lines',
-                                line=dict(width=1, color='red'),
-                                name=f'Lower {confidence_level*100}% CI',
-                                fill='tonexty'
-                            )
-                        )
-                        
-                        # Update layout
-                        fig.update_layout(
-                            title=f'{ticker} Monte Carlo Simulation ({future_days} days)',
-                            xaxis_title='Days',
-                            yaxis_title='Price',
-                            height=600
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Statistics
-                        st.subheader("Prediction Statistics")
-                        
-                        # Calculate statistics for the final day
-                        final_day = simulation_df.iloc[-1]
-                        
-                        # Convert to numeric and handle any potential non-numeric values
-                        final_day_numeric = pd.to_numeric(final_day, errors='coerce')
-                        
-                        expected_price = round(final_day_numeric.mean(), 2)
-                        ci_lower = round(np.percentile(final_day_numeric.dropna(), 100 * (1 - confidence_level)), 2)
-                        ci_upper = round(np.percentile(final_day_numeric.dropna(), 100 * confidence_level), 2)
-                        
-                        price_change = round(((expected_price / float(last_price)) - 1) * 100, 2)
-                        max_price = round(final_day_numeric.max(), 2)
-                        min_price = round(final_day_numeric.min(), 2)
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            st.metric("Starting Price", f"${last_price:.2f}")
-                            st.metric("Expected Price", f"${expected_price:.2f}", f"{price_change}%")
-                        
-                        with col2:
-                            st.metric(f"Lower {confidence_level*100}% CI", f"${ci_lower:.2f}", 
-                                    f"{round(((ci_lower/last_price)-1)*100, 2)}%")
-                            st.metric(f"Upper {confidence_level*100}% CI", f"${ci_upper:.2f}", 
-                                    f"{round(((ci_upper/last_price)-1)*100, 2)}%")
-                        
-                        with col3:
-                            st.metric("Maximum Price", f"${max_price:.2f}", 
-                                     f"{round(((max_price/last_price)-1)*100, 2)}%")
-                            st.metric("Minimum Price", f"${min_price:.2f}", 
-                                     f"{round(((min_price/last_price)-1)*100, 2)}%")
-                    
-                    tab_index += 1
-                
-                # Raw Data tab
-                with results[tab_index]:
-                    st.subheader("Raw Stock Data")
-                    st.dataframe(stock_data)
-                    
-                    # Download option
-                    csv = stock_data.to_csv()
-                    st.download_button(
-                        label="Download Data as CSV",
-                        data=csv,
-                        file_name=f"{ticker}_stock_data.csv",
-                        mime="text/csv",
-                    )
+# Function to run Monte Carlo simulation
+def run_monte_carlo(data, num_simulations, num_days, confidence_level):
+    # Get the last closing price
+    last_price = data['Adj Close'].iloc[-1]
+    
+    # Calculate daily returns
+    daily_returns = data['Daily Return'].dropna()
+    
+    # Calculate mean and standard deviation of daily returns
+    mu = daily_returns.mean()
+    sigma = daily_returns.std()
+    
+    # Create simulation results dataframe
+    simulation_df = pd.DataFrame()
+    
+    # Run simulations
+    for i in range(num_simulations):
+        # Create list to store price series
+        price_series = [last_price]
         
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-    else:
-        st.warning("Please enter a valid ticker symbol.")
+        # Generate future prices
+        for _ in range(num_days):
+            # Generate daily returns using random normal distribution
+            daily_return = np.random.normal(mu, sigma)
+            # Calculate next price
+            price_series.append(price_series[-1] * (1 + daily_return))
+        
+        # Store simulation results
+        simulation_df[i] = price_series
+    
+    # Calculate confidence intervals
+    lower_bound = (100 - confidence_level) / 2
+    upper_bound = 100 - lower_bound
+    
+    # Get percentiles
+    lower_percentile = simulation_df.iloc[-1].quantile(lower_bound / 100)
+    upper_percentile = simulation_df.iloc[-1].quantile(upper_bound / 100)
+    median = simulation_df.iloc[-1].median()
+    
+    return simulation_df, lower_percentile, upper_percentile, median
+
+# Load data based on inputs
+if use_custom_dates:
+    data = load_data(ticker, start=start_date, end=end_date)
+else:
+    data = load_data(ticker, period=period)
+
+# If data is available, display analysis
+if not data.empty:
+    # Display basic stock information
+    st.header(f'{ticker} Stock Analysis')
+    
+    # Calculate returns
+    data = calculate_returns(data)
+    
+    # Display stock price chart
+    st.subheader('Stock Price History')
+    fig = px.line(data, x=data.index, y='Adj Close', title=f'{ticker} Adjusted Close Price')
+    st.plotly_chart(fig)
+    
+    # Display basic statistics
+    st.subheader('Basic Statistics')
+    current_price = data['Adj Close'].iloc[-1]
+    price_change = data['Adj Close'].iloc[-1] - data['Adj Close'].iloc[0]
+    percent_change = (price_change / data['Adj Close'].iloc[0]) * 100
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Current Price", f"${current_price:.2f}")
+    col2.metric("Price Change", f"${price_change:.2f}")
+    col3.metric("Percent Change", f"{percent_change:.2f}%")
+    
+    # Run Monte Carlo simulation if requested
+    if run_simulation:
+        st.header('Monte Carlo Simulation')
+        st.write(f'Running {num_simulations} simulations for {num_days} trading days with {confidence_level}% confidence level')
+        
+        # Run simulation
+        simulation_df, lower_bound, upper_bound, median = run_monte_carlo(data, num_simulations, num_days, confidence_level)
+        
+        # Create figure for simulation results
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        
+        # Add historical price
+        fig.add_trace(
+            go.Scatter(
+                x=data.index, 
+                y=data['Adj Close'],
+                mode='lines',
+                name='Historical Price',
+                line=dict(color='blue')
+            )
+        )
+        
+        # Add Monte Carlo simulations (first 100 only for visual clarity)
+        for i in range(min(100, num_simulations)):
+            fig.add_trace(
+                go.Scatter(
+                    x=pd.date_range(start=data.index[-1], periods=num_days+1, freq='B'),
+                    y=simulation_df[i],
+                    mode='lines',
+                    opacity=0.1,
+                    line=dict(color='green'),
+                    name=f'Simulation {i}',
+                    showlegend=False
+                )
+            )
+        
+        # Calculate and display confidence intervals
+        future_dates = pd.date_range(start=data.index[-1], periods=num_days+1, freq='B')
+        
+        # Add median line
+        fig.add_trace(
+            go.Scatter(
+                x=future_dates,
+                y=simulation_df.median(axis=1),
+                mode='lines',
+                name='Median Forecast',
+                line=dict(color='green', width=2)
+            )
+        )
+        
+        # Add confidence interval
+        lower_bound_pct = (100 - confidence_level) / 2
+        upper_bound_pct = 100 - lower_bound_pct
+        
+        lower_bound_series = simulation_df.apply(lambda x: np.percentile(x, lower_bound_pct), axis=1)
+        upper_bound_series = simulation_df.apply(lambda x: np.percentile(x, upper_bound_pct), axis=1)
+        
+        fig.add_trace(
+            go.Scatter(
+                x=future_dates,
+                y=upper_bound_series,
+                mode='lines',
+                name=f'Upper {confidence_level}% CI',
+                line=dict(color='rgba(0,100,0,0.3)', width=1, dash='dash')
+            )
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=future_dates,
+                y=lower_bound_series,
+                mode='lines',
+                name=f'Lower {confidence_level}% CI',
+                line=dict(color='rgba(0,100,0,0.3)', width=1, dash='dash'),
+                fill='tonexty', 
+                fillcolor='rgba(0,100,0,0.1)'
+            )
+        )
+        
+        fig.update_layout(
+            title=f'Monte Carlo Simulation: {ticker} Stock Price Projection',
+            xaxis_title='Date',
+            yaxis_title='Stock Price ($)',
+            hovermode='x',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        st.plotly_chart(fig)
+        
+        # Display statistical summary
+        st.subheader('Statistical Summary of Simulations')
+        final_price = simulation_df.iloc[-1]
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Expected Price", f"${median:.2f}")
+        col2.metric(f"Lower {confidence_level}% Bound", f"${lower_bound:.2f}")
+        col3.metric(f"Upper {confidence_level}% Bound", f"${upper_bound:.2f}")
+        
+        # Calculate returns at different percentiles
+        expected_return = (median - current_price) / current_price * 100
+        lower_return = (lower_bound - current_price) / current_price * 100
+        upper_return = (upper_bound - current_price) / current_price * 100
+        
+        st.write(f"Expected return: {expected_return:.2f}%")
+        st.write(f"Return range ({confidence_level}% confidence): {lower_return:.2f}% to {upper_return:.2f}%")
+        
+        # Histogram of final prices
+        st.subheader('Distribution of Final Simulated Prices')
+        fig = px.histogram(final_price, nbins=50, title=f'Histogram of {ticker} Simulated Prices after {num_days} Days')
+        fig.add_vline(x=lower_bound, line_dash="dash", line_color="red", annotation_text=f"Lower {confidence_level}% CI")
+        fig.add_vline(x=upper_bound, line_dash="dash", line_color="red", annotation_text=f"Upper {confidence_level}% CI")
+        fig.add_vline(x=median, line_dash="solid", line_color="green", annotation_text="Median")
+        fig.add_vline(x=current_price, line_dash="solid", line_color="blue", annotation_text="Current Price")
+        st.plotly_chart(fig)
+
+else:
+    st.error(f"Could not retrieve data for {ticker}. Please check the symbol and try again.")
