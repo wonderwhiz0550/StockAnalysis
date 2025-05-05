@@ -11,7 +11,7 @@ from plotly.subplots import make_subplots
 
 # Import the ExpectationIvesting_code module
 try:
-    from ExpectationIvesting_code import get_data, monte_carlo_simulation, calculate_confidence_interval, analyze_returns
+    from ExpectationIvesting_Code import get_data, monte_carlo_simulation, calculate_confidence_interval, analyze_returns
 except ImportError:
     st.error("Error importing ExpectationIvesting_code module. Make sure the file is in the same directory.")
     
